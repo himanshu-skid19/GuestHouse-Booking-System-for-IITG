@@ -1,125 +1,166 @@
 body, html {
-    margin: 0;
-    padding: 0;
-    height:fit-content;
-    font-family: 'Poppins', sans-serif; /* or any similar font to the game's */
-    background-color: #176bc4; /* Solid blue background */
-    background-attachment: fixed;
-    min-height: 100vh; /* Ensures at least full viewport height */
-    
-  }
+  margin: 0;
+  padding: 0;
+  height: fit-content;
+  font-family: 'Poppins', sans-serif;
+  background-attachment: fixed;
+  background-color: #3683ff;
+  min-height: 100vh;
+}
 
-  .navbar {
-    display: flex;
-    justify-content: space-between;
-    padding: 1rem 2rem;
-    background-color: #0118c0; /* Semi-transparent for layered look */
-    color: #fff;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .nav-brand {
-    font-size: 1.5rem;
-    color: #29B6F6;
-  }
-  
-  .nav-items li {
-    display: inline;
-    margin: 0 10px;
-    color: #B3E5FC;
-    font-weight: bold;
-    text-transform: uppercase;
-  }
-  
-  .login-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: calc(100vh - 60px);
-    text-align: center;
-    color: #fff;
-    background-color: #194ece; /* Dark overlay to make text stand out */
-    border: 5px solid #68fcfe; /* Persona 3's signature blue border */
-    padding: 2rem;
-    margin: 2rem;
-    border-radius: 10px; /* Soften the corners */
-    box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.5); /* Optional: Adds a subtle shadow for depth */
-    backdrop-filter: blur(5px); /* Optional: Adds a frosted glass effect behind the login container */
-    overflow: hidden;
-  
-  }
-  
-  .login-title h1, .login-title h2 {
-    color: #fff; /* Bright white for titles */
-    text-shadow: 2px 2px 4px #000; /* Soft shadow for legibility */
-  }
-  
-  .input-group label {
-    color: #fff;
-    margin-bottom: 0.5rem;
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0; /* Ensures navbar extends fully to the right */
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Centers items vertically */
+  padding: 1rem 2rem;
+  background-color: #194ece;
+  color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
+/* Since the navbar is fixed, we add padding to the body to prevent content from being hidden behind it. */
+body {
+  padding-top: 60px; /* Adjust this value to match the height of your navbar. */
+}
+
+.nav-brand {
+  font-size: 1.5rem;
+  color: #29B6F6;
+}
+
+.nav-items {
+  list-style: none; /* Remove bullet points from list items */
+  padding-left: 0; /* Reset padding */
+}
+
+.nav-items li {
+  display: inline;
+  margin: 0 10px;
+  color: #B3E5FC;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 60px); /* Adjust based on navbar height */
+  text-align: center;
+  color: #fff;
+  background-color: #194ece;
+  border: 5px solid #68fcfe;
+  padding: 2rem;
+  margin: 2rem auto; /* Center horizontally */
+  border-radius: 10px;
+  box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+}
+
+.login-title h1, .login-title h2 {
+  color: #fff;
+  text-shadow: 2px 2px 4px #000;
+}
+
+.input-group label {
+  color: #fff;
+  margin-bottom: 0.5rem;
 }
 
 input[type="text"],
+input[type="email"],
+input[type="role"],
 input[type="password"] {
-width: calc(100% - 20px);
-padding: 10px;
-margin-bottom: 20px;
-border: 1px solid #29B6F6; /* Light blue border */
-background-color: white; /* Dark blue background for input fields */
-color: black;
-border-radius: 4px;
-font-size: 1rem;
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #29B6F6;
+  background-color: white;
+  color: black;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+input, select {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #29B6F6; /* Light blue border, similar to other inputs */
+  background-color: white; /* White background */
+  color: black; /* Black text color */
+  border-radius: 4px; /* Rounded corners */
+  font-size: 1rem; /* Standard font size */
+  outline: none; /* Removes the default focus outline */
+}
+
+input:focus, select:focus {
+  border-color: #82B1FF; /* A lighter shade for focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Adds a glow effect on focus */
+}
+
+select {
+  cursor: pointer; /* Changes cursor to pointer to indicate it's a dropdown */
+  appearance: none; /* Removes default system appearance */
+  background-image: url('path-to-your-dropdown-icon.svg'); /* Optional: Adds custom dropdown icon */
+  background-repeat: no-repeat;
+  background-position: right 10px center; /* Positions the custom icon */
+  background-size: 12px; /* Adjusts the size of the custom icon */
 }
 
 .login-button {
-background-color: #0118c0; /* Light blue for the button to stand out */
-color: white;
-padding: 10px 20px;
-border: none;
-border-radius: 4px;
-cursor: pointer;
-font-weight: bold;
-text-transform: uppercase;
-transition: background-color 0.2s, color 0.2s;
+  background-color: #0118c0;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .login-button:hover {
-background-color: #82B1FF; /* A lighter shade for hover */
-color: #fff;
+  background-color: #82B1FF;
+  color: #fff;
 }
 
 .footer p {
-color: #fff;
-margin-top: 2rem;
+  color: #fff;
+  margin-top: 2rem;
 }
 
 .footer a {
-color: #B3E5FC;
-text-decoration: none;
-font-weight: bold;
+  color: #B3E5FC;
+  text-decoration: none;
+  font-weight: bold;
 }
 
 /* Responsive adjustments */
 @media (max-width: 600px) {
-.navbar {
-flex-direction: column;
-align-items: center;
-}
+  .navbar {
+    flex-direction: column;
+    align-items: center;
+  }
 
-.nav-items {
-margin-top: 1rem;
-}
+  .nav-items {
+    margin-top: 1rem;
+  }
 
-.nav-items li {
-display: block;
-margin: 5px 0;
-}
+  .nav-items li {
+    display: block;
+    margin: 5px 0;
+  }
 
-.login-container {
-margin: 1rem;
-padding: 1rem;
+  .login-container {
+    margin: 1rem;
+    padding: 1rem;
+  }
 }
-}
-  
