@@ -37,6 +37,43 @@ connection.connect(err => {
 });
 
 
+// Helper function to run query and return results in a promise
+function runQuery(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    connection.query(sql, params, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
+// Using runQuery in an Express route
+app.get('/get-user-info', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+
+  try {
+    const uid = req.session.user.uid;
+    const results = await runQuery('SELECT * FROM users WHERE uid = ?', [uid]);
+
+    if (results.length > 0) {
+      const userInfo = results[0];
+      delete userInfo.passwordhash; // Removing sensitive data
+      res.status(200).json(userInfo);
+    } else {
+      res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching user info:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+});
+
+
 // Registration endpoint
 app.post('/register', async (req, res) => {
   const {username, email, password, role, name} = req.body;
@@ -62,6 +99,26 @@ app.post('/register', async (req, res) => {
   });
 });
 
+app.get('/check-session', (req, res) => {
+  // Check if user is stored in session
+  console.log('Session:', req.session);
+  if (req.session.user) {
+    const user = { ...req.session.user };
+    // Optionally remove sensitive information before sending the response
+    delete user.passwordhash; // Assuming 'passwordhash' is the key holding password data
+    
+    res.json({
+      status: 'success',
+      message: 'Session is active',
+      user: user
+    });
+  } else {
+    res.status(401).json({ // Using 401 status code to indicate unauthorized access
+      status: 'error',
+      message: 'No active session found'
+    });
+  }
+});
 
 app.post('/login', (req, res) => {
   const { username, password, role } = req.body;
@@ -147,6 +204,179 @@ app.get('/get-booking-details', (req, res) => {
     res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
   }
 });
+
+
+app.post('/apply-booking', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+
+  const uid = req.session.user.uid; // Retrieved from the session
+  const { guestDetails, preferredOccupancy, startDate, endDate, purposeOfVisit } = req.body;
+
+  // Validate incoming data
+  if (!guestDetails || !preferredOccupancy || !startDate || !endDate) {
+    return res.status(400).json({ status: 'error', message: 'Missing required booking details' });
+  }
+
+  // Start the transaction
+  connection.beginTransaction(err => {
+    if (err) {
+      console.error('Error starting transaction:', err);
+      return res.status(500).json({ status: 'error', message: 'Error starting transaction' });
+    }
+
+    // Determine available room
+    determineAvailableRoom(preferredOccupancy, startDate, endDate, (err, rid) => {
+      if (err || !rid) {
+        console.error('Error determining available room:', err);
+        return connection.rollback(() => {
+          res.status(500).json({ status: 'error', message: 'No rooms available or error determining room' });
+        });
+      }
+
+      // Calculate price
+      calculatePrice(uid, rid, startDate, endDate, (err, finalPrice) => {
+        if (err) {
+          console.error('Error calculating price:', err);
+          return connection.rollback(() => {
+            res.status(500).json({ status: 'error', message: 'Error calculating price' });
+          });
+        }
+
+        // Insert booking
+        const status = 'pending'; // or any other default status you have
+        const isOfficial = false; // Example, adjust based on your logic
+        const insertBookingQuery = 'INSERT INTO bookings (uid, rid, startdate, enddate, status, isofficial, createdat, finalprice) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)';
+
+        connection.query(insertBookingQuery, [uid, rid, startDate, endDate, status, isOfficial, finalPrice], (error, bookingResult) => {
+          if (error) {
+            console.error('Error inserting booking:', error);
+            return connection.rollback(() => {
+              res.status(500).json({ status: 'error', message: 'Error inserting booking' });
+            });
+          }
+
+          const bookingId = bookingResult.insertId;
+
+          // Insert booking details for each guest, including the purposeOfVisit for each
+          guestDetails.forEach((guest, index) => {
+            const { guestName, phone, visitorIdCard, address, email, relationshipWithUser } = guest;
+            const insertBookingDetailsQuery = 'INSERT INTO bookingdetails (bid, guestname, phone, visitoridcard, address, email, relationshipwithuser, purposeofvisit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+
+            connection.query(insertBookingDetailsQuery, [bookingId, guestName, phone, visitorIdCard, address, email, relationshipWithUser, purposeOfVisit], (error) => {
+              if (error) {
+                console.error(`Error inserting booking details for guest ${index}:`, error);
+                return connection.rollback(() => {
+                  res.status(500).json({ status: 'error', message: 'Error inserting booking details' });
+                });
+              }
+
+              // Commit only after the last guest details are inserted
+              if (index === guestDetails.length - 1) {
+                connection.commit(err => {
+                  if (err) {
+                    console.error('Error during commit:', err);
+                    return connection.rollback(() => {
+                      res.status(500).json({ status: 'error', message: 'Error during commit' });
+                    });
+                  }
+                  res.status(200).json({ status: 'success', message: 'Booking applied successfully', bookingId });
+                });
+              }
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+
+function determineAvailableRoom(preferredOccupancy, startDate, endDate, callback) {
+  const query = `
+    SELECT rid
+    FROM rooms
+    WHERE capacity >= ? AND rid NOT IN (
+      SELECT rid  
+      FROM bookings
+      WHERE NOT (startdate >= ? OR enddate <= ?)
+    )
+    AND gid IN (SELECT gid FROM guesthouses WHERE location LIKE '%Indian Institute of Technology Guwahati%')
+    LIMIT 1
+  `;
+  // Use the `connection` object directly here
+  connection.query(query, [preferredOccupancy, endDate, startDate], (error, results) => {
+    if (error) {
+      callback(error, null);
+    } else {
+      const rid = results.length > 0 ? results[0].rid : null;
+      callback(null, rid);
+    }
+  });
+}
+function getUserRole(uid, callback) {
+  connection.query('SELECT role FROM users WHERE uid = ?', [uid], (error, results) => {
+    if (error) {
+      return callback(error, null);
+    }
+    if (results.length > 0) {
+      return callback(null, results[0].role);
+    }
+    return callback(null, null);
+  });
+}
+
+function getPricePerNight(rid, callback) {
+  connection.query('SELECT pricepernight FROM rooms WHERE rid = ?', [rid], (error, results) => {
+    if (error) {
+      return callback(error, null);
+    }
+    if (results.length > 0) {
+      return callback(null, results[0].pricepernight);
+    }
+    return callback(null, 0);
+  });
+}
+
+
+function calculatePrice(uid, rid, startDate, endDate, callback) {
+  // Placeholder for the price calculation logic
+  // Assume `getUserRole` and `getPricePerNight` are implemented elsewhere
+  
+  getUserRole(uid, (err, role) => {
+    if (err) {
+      return callback(err, null);
+    }
+    
+    getPricePerNight(rid, (err, pricePerNight) => {
+      if (err) {
+        return callback(err, null);
+      }
+      
+      const days = (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24);
+      let discount = 0;
+      
+      switch (role) {
+        case 'faculty':
+          discount = 0.15; // 15% discount
+          break;
+        case 'dept_heads':
+          discount = 0.25; // 25% discount
+          break;
+        case 'external':
+          discount = 0.10; // 10% discount
+          break;
+        // No discount for students and other roles
+      }
+      
+      const finalPrice = pricePerNight * days * (1 - discount);
+      callback(null, finalPrice);
+    });
+  });
+}
+
+
 
 
 app.post('/logout', (req, res) => {

@@ -4,6 +4,7 @@ import './App.css';
 import LoginPage from './LoginPage'; // Import LoginPage component
 import RegistrationPage from './RegistrationPage'; 
 import Dashboard from './Dashboard'; // Import Dashboard component
+import BookingPage from './BookingPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/register" element={<RegistrationPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/booking" element={<BookingPage />} />
     </Routes>
   </Router>
   );

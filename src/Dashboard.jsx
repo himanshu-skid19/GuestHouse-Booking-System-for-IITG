@@ -53,21 +53,27 @@ const Dashboard = () => {
 
   const handleApply = async () => {
     try {
-        const response = await fetch('http://localhost:3001/apply', { // Adjust URL as needed
-            method: 'POST',
-            credentials: 'include', 
-        });
-        const responseData = await response.json();
-        if (responseData.status === 'success') {
-            // Optionally clear any client-side state here
-            navigate('/apply'); // Redirect to login page or wherever appropriate
-        } else {
-            console.error('Logout failed');
-        }
+      const sessionResponse = await fetch('http://localhost:3001/check-session', {
+        credentials: 'include', // Ensure cookies are sent
+      });
+      
+      if (sessionResponse.ok) {
+        // Session is valid, navigate to the booking page
+        navigate('/booking');
+      } else {
+        // Handle session not valid
+        alert('Session expired. Please log in again.');
+        navigate('/login');
+      }
     } catch (error) {
-        console.error('There was an error!', error);
+      console.error('Error checking session:', error);
+      alert('An error occurred. Please try again.');
     }
-};
+  };
+  
+
+
+  
 
   const handleBookings = async () => {
     try {
