@@ -57,30 +57,23 @@ const AdminDashboard = () => {
 
   const handleBookings = async () => {
     try {
-      // Use axios to send a GET request
-      const response = await axios.get('http://localhost:3001/get-booking-details', {
-        withCredentials: true, // Ensure cookies are sent
-      });
-  
-      if (response.status === 200) {
-        navigate('/booking-details', { state: { bookings: response.data } });
-        console.log(response.data); // For now, just logging the data
-      } else {
-        // Handle any status other than 200 OK
-        console.error('Error fetching bookings:', response.data.message);
+        const sessionResponse = await fetch('http://localhost:3001/check-session', {
+          credentials: 'include', // Ensure cookies are sent
+        });
+        
+        if (sessionResponse.ok) {
+          // Session is valid, navigate to the booking page
+          navigate('/admin-booking');
+        } else {
+          // Handle session not valid
+          alert('Session expired. Please log in again.');
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        alert('An error occurred. Please try again.');
       }
-    } catch (error) {
-      if (error.response) {
-        // The server responded with a status other than 2xx
-        console.error('Server responded with an error:', error.response.status);
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('No response received:', error.request);
-      } else {
-        // Something else happened in setting up the request
-        console.error('Error:', error.message);
-      }
-    }
+    
   };
   
 

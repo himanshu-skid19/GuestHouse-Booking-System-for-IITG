@@ -7,6 +7,7 @@ import Dashboard from './Dashboard'; // Import Dashboard component
 import BookingPage from './BookingPage';
 import BookingDetailsPage from './BookingDetails';
 import AdminDashboard from './AdminDashboard';
+import AdminBooking from './AdminBooking';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route path="/booking" element={<BookingPage />} />
       <Route path="/booking-details" element={<BookingDetailsPage />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      <Route path="/admin-booking" element={<AdminBooking/>} />
     </Routes>
   </Router>
   );

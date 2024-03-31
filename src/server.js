@@ -211,15 +211,15 @@ app.get('/get-booking-details', (req, res) => {
   }
 });
 
-app.get('/get-pending-booking-details', (req, res) => {
+app.get('/get-pending-bookings', (req, res) => {
   // Check if the user is logged in
   if (req.session.user) {
     const user_id = req.session.user.uid;
 
     // Adjusted query to exclude 'accepted' and 'rejected' bookings
-    const query = 'SELECT * FROM bookings WHERE uid = ? AND status NOT IN (?, ?)';
+    const query = 'SELECT * FROM bookings WHERE status NOT IN (?, ?)';
 
-    connection.query(query, [user_id, 'accepted', 'rejected'], (error, results) => {
+    connection.query(query, ['confirmed', 'rejected'], (error, results) => {
       if (error) {
         console.error('Error fetching pending booking details:', error);
         res.status(500).json({ status: 'error', message: 'Internal server error' });
@@ -235,6 +235,36 @@ app.get('/get-pending-booking-details', (req, res) => {
   } else {
     res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
   }
+});
+
+// Endpoint to update the status of a booking
+app.put('/update-booking-status/:bookingId', (req, res) => {
+  // Extract the bookingId from the URL parameters and the new status from the request body
+  const { bookingId } = req.params;
+  const { status } = req.body;
+
+  // Check if the user is logged in and has the correct permission to update a booking
+  if (!req.session.user) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+
+  // Update the booking status in the database
+  const updateQuery = 'UPDATE bookings SET status = ? WHERE bid = ?';
+
+  connection.query(updateQuery, [status, bookingId], (error, result) => {
+    if (error) {
+      console.error('Error updating booking status:', error);
+      return res.status(500).json({ status: 'error', message: 'Internal server error' });
+    }
+
+    if (result.affectedRows === 0) {
+      // No booking found with the given ID
+      return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+
+    // Successfully updated the booking status
+    res.json({ status: 'success', message: 'Booking status updated successfully' });
+  });
 });
 
 
