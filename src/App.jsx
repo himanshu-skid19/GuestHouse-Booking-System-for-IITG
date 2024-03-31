@@ -6,6 +6,7 @@ import RegistrationPage from './RegistrationPage';
 import Dashboard from './Dashboard'; // Import Dashboard component
 import BookingPage from './BookingPage';
 import BookingDetailsPage from './BookingDetails';
+import AdminDashboard from './AdminDashboard';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/booking" element={<BookingPage />} />
       <Route path="/booking-details" element={<BookingDetailsPage />} />
+      <Route path="/admin-dashboard" element={<AdminDashboard />} />
     </Routes>
   </Router>
   );

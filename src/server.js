@@ -4,6 +4,10 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
 import session from 'express-session';
+import { MailSlurp } from 'mailslurp-client'
+import dotenv from 'dotenv';
+
+
 
 const saltRounds = 10;
 const port = 3001; // You can choose any port that's free
@@ -35,6 +39,8 @@ connection.connect(err => {
 
   console.log('Connected to the MySQL server.');
 });
+
+
 
 
 // Helper function to run query and return results in a promise
@@ -147,7 +153,7 @@ app.post('/login', (req, res) => {
 
       if (result) {
         req.session.user = results[0];
-        res.status(200).json({ status: 'success' });
+        res.status(200).json({results, status: 'success'});
       } else {
         res.status(401).json({ status: 'error', message: 'Invalid credentials' });
       }
@@ -205,6 +211,33 @@ app.get('/get-booking-details', (req, res) => {
   }
 });
 
+app.get('/get-pending-booking-details', (req, res) => {
+  // Check if the user is logged in
+  if (req.session.user) {
+    const user_id = req.session.user.uid;
+
+    // Adjusted query to exclude 'accepted' and 'rejected' bookings
+    const query = 'SELECT * FROM bookings WHERE uid = ? AND status NOT IN (?, ?)';
+
+    connection.query(query, [user_id, 'accepted', 'rejected'], (error, results) => {
+      if (error) {
+        console.error('Error fetching pending booking details:', error);
+        res.status(500).json({ status: 'error', message: 'Internal server error' });
+        return;
+      }
+
+      if (results.length > 0) {
+        res.status(200).json(results);
+      } else {
+        res.status(404).json({ status: 'error', message: 'Pending booking details not found' });
+      }
+    });
+  } else {
+    res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+});
+
+
 app.get('/get-booking-details/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   if (!req.session.user) {
@@ -259,6 +292,8 @@ app.post('/apply-booking', (req, res) => {
     const userRole = results[0].role;
     // Determine if the booking should be marked as official based on role
     const isOfficial = ['dept_heads', 'admin'].includes(userRole); // Adjust roles as needed
+    const userEmail = results[0].email;
+
 
     // Start the transaction
     connection.beginTransaction(err => {
@@ -280,6 +315,8 @@ app.post('/apply-booking', (req, res) => {
         }
 
         const bookingId = bookingResult.insertId;
+        const guestEmails = guestDetails.map(guest => guest.email).filter(email => email);
+
 
         // Insert booking details for each guest, including the purposeOfVisit for each, now including preferredRoom and preferredGuesthouse
         guestDetails.forEach((guest, index) => {
@@ -293,6 +330,37 @@ app.post('/apply-booking', (req, res) => {
                 res.status(500).json({ status: 'error', message: 'Error inserting booking details' });
               });
             }
+
+            const emailSubject = 'Guesthouse Booking Request Confirmation';
+            const emailContent = `
+                                  Hello,
+
+                                  Your booking has been successfully confirmed with the following details:
+
+                                  Booking ID: ${bookingId}
+                                  Start Date: ${new Date(startDate).toLocaleDateString()}
+                                  End Date: ${new Date(endDate).toLocaleDateString()}
+                                  Purpose of Visit: ${purposeOfVisit}
+                                  Preferred Guesthouse: ${preferredGuesthouse || 'Any available'}
+                                  Preferred Room: ${preferredRoom || 'Any available'}
+                                  Remarks: ${remarks || 'None'}
+
+                                  Guest Details:
+                                  ${guestDetails.map((guest, index) => `
+                                    Guest #${index + 1}:
+                                    Name: ${guest.guestName}
+                                    Phone: ${guest.phone}
+                                    Email: ${guest.email}
+                                    ID Card: ${guest.visitorIdCard}
+                                    Address: ${guest.address}
+                                    Relationship with User: ${guest.relationshipWithUser}
+                                  `).join('')}
+
+                                  Please contact us if you have any questions or need further information.
+
+                                  Best regards,
+                                  [Your Guesthouse/Hotel Name]
+                                  `;
 
             // Commit only after the last guest details are inserted
             if (index === guestDetails.length - 1) {

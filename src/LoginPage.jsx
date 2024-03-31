@@ -33,10 +33,17 @@ const LoginPage = () => {
       });
 
       const responseData = await response.json();
-      console.log(responseData);
+      console.log(response);
 
       if (responseData.status === 'success') {
-        navigate('/dashboard');
+        // Adjusted to fetch the role from the first element of the results array
+        const userRole = responseData.results[0].role;
+        
+        if (userRole === 'admin') {
+          navigate('/admin-dashboard'); // Redirect to the admin dashboard if the user is an admin
+        } else {
+          navigate('/dashboard'); // Redirect to the general user dashboard for all other roles
+        }
       } else {
         alert('Invalid credentials. Please try again.');
       }

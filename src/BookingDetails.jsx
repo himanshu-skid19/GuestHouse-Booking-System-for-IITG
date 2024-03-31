@@ -154,6 +154,7 @@ const BookingDetailsPage = () => {
             <th>Start Date</th>
             <th>End Date</th>
             <th>Status</th>
+            <th>Final Price</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -164,6 +165,7 @@ const BookingDetailsPage = () => {
               <td>{formatDate(booking.startdate)}</td>
               <td>{formatDate(booking.enddate)}</td>
               <td>{booking.status}</td>
+              <td>{booking.finalprice || "Not confirmed"}</td>
               <td>
                 <button onClick={() => handleViewDetails(booking.bid)} className="dashboard-button">
                   View Details

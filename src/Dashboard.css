@@ -4,6 +4,7 @@ body, html {
     height: fit-content;
     font-family: 'Poppins', sans-serif;
     background-color: #3683ff; /* Lighter background for a dashboard feel */
+    background-image: linear-gradient(180deg, #1dd4ff 0%, #1a4dcc 100%);
     min-height: 100vh;
   }
   

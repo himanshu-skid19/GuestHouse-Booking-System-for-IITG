@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './Dashboard.css'; // Ensure you have a CSS file named Dashboard.css with appropriate styles
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import emailjs from 'emailjs-com';
 import { Link } from 'react-router-dom';
 
 const BookingPage = () => {
@@ -22,6 +24,20 @@ const BookingPage = () => {
         remarks: '',
       });
 
+      const navigate = useNavigate();
+
+      const formatDate = (isoString) => {
+        return new Date(isoString).toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+      };
+    
       const handleChange = (e, index = null) => {
         const { name, value } = e.target;
     
@@ -46,43 +62,58 @@ const BookingPage = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault(); // Prevent default form behavior
-    
-        // Adjust the structure if necessary
-        const submissionData = {
-            ...bookingDetails,
-            startDate: bookingDetails.timeOfDeparture,
-            endDate: bookingDetails.timeOfArrival,
-        };
-        // Remove the original timeOfDeparture and timeOfArrival if needed
-        delete submissionData.timeOfDeparture;
-        delete submissionData.timeOfArrival;
-    
-        console.log('Submitting booking details:', submissionData);
-    
-        try {
-            const response = await axios.post('http://localhost:3001/apply-booking', submissionData, {
-                withCredentials: true,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-    
-            if (response.status === 200) {
-                console.log('Booking successful:', response.data);
-                alert('Booking application successful!');
-                navigate('/dashboard')
-            } else {
-                console.error('Booking failed:', response.data.message);
-                alert(`Booking application failed: ${response.data.message}`);
-            }
-        } catch (error) {
-            console.error('Error during booking:', error);
-            alert('An error occurred during the booking process. Please try again.');
-        }
-    };
-    
+      e.preventDefault(); // Prevent default form behavior
       
+      emailjs.init('AbPyNqB83PD1oQrsE'); 
+      const submissionData = {
+          ...bookingDetails,
+          startDate: bookingDetails.timeOfDeparture,
+          endDate: bookingDetails.timeOfArrival,
+      };
+      delete submissionData.timeOfDeparture;
+      delete submissionData.timeOfArrival;
+  
+      console.log('Submitting booking details:', submissionData);
+  
+      try {
+          const response = await axios.post('http://localhost:3001/apply-booking', submissionData, {
+              withCredentials: true,
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+          });
+  
+          if (response.status === 200) {
+        
+              // Prepare the template parameters
+              const templateParams = {
+                bookingId: response.data.bookingId,
+                purposeOfVisit: submissionData.purposeOfVisit,
+                preferredGuesthouse: submissionData.preferredGuestHouse || 'Any available',
+                preferredRoom: submissionData.preferredRoom || 'Any available',
+                remarks: submissionData.remarks || 'None',
+            };
+  
+              // Send the email
+              emailjs.send('service_poqtkaf', 'template_iscrvjs', templateParams)
+                  .then((result) => {
+                      console.log('Email successfully sent!', result.text);
+                      alert('Confirmation email sent successfully!');
+                  }, (error) => {
+                      console.log('Failed to send email.', error.text);
+                  });
+  
+              navigate('/dashboard')
+          } else {
+              console.error('Booking failed:', response.data.message);
+              alert(`Booking application failed: ${response.data.message}`);
+          }
+      } catch (error) {
+          console.error('Error during booking:', error);
+          alert('An error occurred during the booking process. Please try again.');
+      }
+  };
+  
 
   return (
     <>
