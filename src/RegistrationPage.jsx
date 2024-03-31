@@ -79,10 +79,10 @@ function RegistrationPage() {
     <>
       <nav className="navbar">
         <div className="nav-brand">GHBS</div>
-        <ul className="nav-items">
+        <ul className="dashboard-items">
+          <li><Link to="/login" className="dashboard-link">Home</Link></li>
           <li>About</li>
           <li>Contact</li>
-          <li>Help</li>
         </ul>
       </nav>
       <div className="login-container">

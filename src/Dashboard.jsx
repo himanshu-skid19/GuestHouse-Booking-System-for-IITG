@@ -77,28 +77,39 @@ const Dashboard = () => {
 
   const handleBookings = async () => {
     try {
-        const response = await fetch('http://localhost:3001/get-booking-details', { // Adjust URL as needed
-            method: 'POST',
-            credentials: 'include', 
-        });
-        const responseData = await response.json();
-        if (responseData.status === 'success') {
-            // Optionally clear any client-side state here
-            navigate('/bookings'); // Redirect to login page or wherever appropriate
-        } else {
-            console.error('Logout failed');
-        }
+      // Use axios to send a GET request
+      const response = await axios.get('http://localhost:3001/get-booking-details', {
+        withCredentials: true, // Ensure cookies are sent
+      });
+  
+      if (response.status === 200) {
+        navigate('/booking-details', { state: { bookings: response.data } });
+        console.log(response.data); // For now, just logging the data
+      } else {
+        // Handle any status other than 200 OK
+        console.error('Error fetching bookings:', response.data.message);
+      }
     } catch (error) {
-        console.error('There was an error!', error);
+      if (error.response) {
+        // The server responded with a status other than 2xx
+        console.error('Server responded with an error:', error.response.status);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+      } else {
+        // Something else happened in setting up the request
+        console.error('Error:', error.message);
+      }
     }
-};
+  };
+  
 
   return (
     <>
       <nav className="dashboard-navbar">
         <div className="dashboard-brand">Student Portal</div>
         <ul className="dashboard-items">
-          <li>Dashboard</li>
+          <li hred="/dashboard">Home</li>
           <li>Profile</li>
           <li>Courses</li>
           <li onClick={handleLogout}>Logout</li>

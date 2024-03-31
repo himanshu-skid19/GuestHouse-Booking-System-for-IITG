@@ -205,6 +205,32 @@ app.get('/get-booking-details', (req, res) => {
   }
 });
 
+app.get('/get-booking-details/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  if (!req.session.user) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+  
+  try {
+    const bookingDetailsQuery = 'SELECT * FROM bookingdetails WHERE bid = ?';
+    // Now we expect multiple booking details rows for each booking ID.
+    const bookingDetails = await runQuery(bookingDetailsQuery, [bookingId]);
+    console.log('Booking details:', bookingDetails)
+
+    if (bookingDetails.length > 0) {
+      // Send the entire array of booking details in the response.
+      res.json({ status: 'success', bookingDetails });
+    } else {
+      res.status(404).json({ status: 'error', message: 'Booking details not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching booking details:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+});
+
+
+
 
 app.post('/apply-booking', (req, res) => {
   if (!req.session.user) {
@@ -212,79 +238,74 @@ app.post('/apply-booking', (req, res) => {
   }
 
   const uid = req.session.user.uid; // Retrieved from the session
-  const { guestDetails, preferredOccupancy, startDate, endDate, purposeOfVisit } = req.body;
+  const { guestDetails, preferredOccupancy, startDate, endDate, purposeOfVisit, preferredRoom, preferredGuesthouse, remarks } = req.body;
 
-  // Validate incoming data
+  // Validate incoming data for the main booking details
   if (!guestDetails || !preferredOccupancy || !startDate || !endDate) {
     return res.status(400).json({ status: 'error', message: 'Missing required booking details' });
   }
 
-  // Start the transaction
-  connection.beginTransaction(err => {
-    if (err) {
-      console.error('Error starting transaction:', err);
-      return res.status(500).json({ status: 'error', message: 'Error starting transaction' });
+  // First, retrieve the user's role from the database
+  connection.query('SELECT role FROM users WHERE uid = ?', [uid], (error, results) => {
+    if (error) {
+      console.error('Error fetching user role:', error);
+      return res.status(500).json({ status: 'error', message: 'Internal server error' });
     }
 
-    // Determine available room
-    determineAvailableRoom(preferredOccupancy, startDate, endDate, (err, rid) => {
-      if (err || !rid) {
-        console.error('Error determining available room:', err);
-        return connection.rollback(() => {
-          res.status(500).json({ status: 'error', message: 'No rooms available or error determining room' });
-        });
+    if (results.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    const userRole = results[0].role;
+    // Determine if the booking should be marked as official based on role
+    const isOfficial = ['dept_heads', 'admin'].includes(userRole); // Adjust roles as needed
+
+    // Start the transaction
+    connection.beginTransaction(err => {
+      if (err) {
+        console.error('Error starting transaction:', err);
+        return res.status(500).json({ status: 'error', message: 'Error starting transaction' });
       }
 
-      // Calculate price
-      calculatePrice(uid, rid, startDate, endDate, (err, finalPrice) => {
-        if (err) {
-          console.error('Error calculating price:', err);
+      // Insert booking data without specifying room details
+      const insertBookingQuery = 'INSERT INTO bookings (uid, startDate, endDate, status, isofficial, createdat, remarks) VALUES (?, ?, ?, ?, ?, NOW(), remarks)';
+      const status = 'pending'; // or any other default status you have
+
+      connection.query(insertBookingQuery, [uid, startDate, endDate, status, isOfficial, remarks], (error, bookingResult) => {
+        if (error) {
+          console.error('Error inserting booking:', error);
           return connection.rollback(() => {
-            res.status(500).json({ status: 'error', message: 'Error calculating price' });
+            res.status(500).json({ status: 'error', message: 'Error inserting booking' });
           });
         }
 
-        // Insert booking
-        const status = 'pending'; // or any other default status you have
-        const isOfficial = false; // Example, adjust based on your logic
-        const insertBookingQuery = 'INSERT INTO bookings (uid, rid, startdate, enddate, status, isofficial, createdat, finalprice) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)';
+        const bookingId = bookingResult.insertId;
 
-        connection.query(insertBookingQuery, [uid, rid, startDate, endDate, status, isOfficial, finalPrice], (error, bookingResult) => {
-          if (error) {
-            console.error('Error inserting booking:', error);
-            return connection.rollback(() => {
-              res.status(500).json({ status: 'error', message: 'Error inserting booking' });
-            });
-          }
+        // Insert booking details for each guest, including the purposeOfVisit for each, now including preferredRoom and preferredGuesthouse
+        guestDetails.forEach((guest, index) => {
+          const { guestName, phone, visitorIdCard, address, email, relationshipWithUser } = guest;
+          const insertBookingDetailsQuery = 'INSERT INTO bookingdetails (bid, guestname, phone, visitoridcard, address, email, relationshipwithuser, purposeofvisit, preferredRoom, preferredGuesthouse) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
-          const bookingId = bookingResult.insertId;
+          connection.query(insertBookingDetailsQuery, [bookingId, guestName, phone, visitorIdCard, address, email, relationshipWithUser, purposeOfVisit, preferredRoom, preferredGuesthouse], (error) => {
+            if (error) {
+              console.error(`Error inserting booking details for guest ${index}:`, error);
+              return connection.rollback(() => {
+                res.status(500).json({ status: 'error', message: 'Error inserting booking details' });
+              });
+            }
 
-          // Insert booking details for each guest, including the purposeOfVisit for each
-          guestDetails.forEach((guest, index) => {
-            const { guestName, phone, visitorIdCard, address, email, relationshipWithUser } = guest;
-            const insertBookingDetailsQuery = 'INSERT INTO bookingdetails (bid, guestname, phone, visitoridcard, address, email, relationshipwithuser, purposeofvisit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-
-            connection.query(insertBookingDetailsQuery, [bookingId, guestName, phone, visitorIdCard, address, email, relationshipWithUser, purposeOfVisit], (error) => {
-              if (error) {
-                console.error(`Error inserting booking details for guest ${index}:`, error);
-                return connection.rollback(() => {
-                  res.status(500).json({ status: 'error', message: 'Error inserting booking details' });
-                });
-              }
-
-              // Commit only after the last guest details are inserted
-              if (index === guestDetails.length - 1) {
-                connection.commit(err => {
-                  if (err) {
-                    console.error('Error during commit:', err);
-                    return connection.rollback(() => {
-                      res.status(500).json({ status: 'error', message: 'Error during commit' });
-                    });
-                  }
-                  res.status(200).json({ status: 'success', message: 'Booking applied successfully', bookingId });
-                });
-              }
-            });
+            // Commit only after the last guest details are inserted
+            if (index === guestDetails.length - 1) {
+              connection.commit(err => {
+                if (err) {
+                  console.error('Error during commit:', err);
+                  return connection.rollback(() => {
+                    res.status(500).json({ status: 'error', message: 'Error during commit' });
+                  });
+                }
+                res.status(200).json({ status: 'success', message: 'Booking applied successfully', bookingId });
+              });
+            }
           });
         });
       });
@@ -293,28 +314,66 @@ app.post('/apply-booking', (req, res) => {
 });
 
 
-function determineAvailableRoom(preferredOccupancy, startDate, endDate, callback) {
-  const query = `
-    SELECT rid
-    FROM rooms
-    WHERE capacity >= ? AND rid NOT IN (
-      SELECT rid  
-      FROM bookings
-      WHERE NOT (startdate >= ? OR enddate <= ?)
+
+function determineAvailableRoom(arrivalDate, departureDate, preferredGuesthouse, preferredRoom, callback) {
+  // Attempt to find the preferred room in the preferred guesthouse if specified
+  let query = `
+    SELECT r.rid, r.room_number
+    FROM rooms r
+    JOIN guesthouses g ON r.gid = g.gid
+    WHERE r.rid NOT IN (
+      SELECT b.rid 
+      FROM bookings b
+      WHERE NOT (b.enddate <= ? OR b.startdate >= ?)
     )
-    AND gid IN (SELECT gid FROM guesthouses WHERE location LIKE '%Indian Institute of Technology Guwahati%')
-    LIMIT 1
-  `;
-  // Use the `connection` object directly here
-  connection.query(query, [preferredOccupancy, endDate, startDate], (error, results) => {
+    ${preferredGuesthouse ? 'AND g.name = ?' : ''}
+    ${preferredRoom ? 'AND r.room_number = ?' : ''}
+    LIMIT 1;`;
+
+  // Parameters for the query, dynamically including preferred options if provided
+  let queryParams = [arrivalDate, departureDate];
+  if (preferredGuesthouse) queryParams.push(preferredGuesthouse);
+  if (preferredRoom) queryParams.push(preferredRoom);
+
+  // Execute the query with the constructed parameters
+  connection.query(query, queryParams, (error, results) => {
     if (error) {
       callback(error, null);
     } else {
-      const rid = results.length > 0 ? results[0].rid : null;
-      callback(null, rid);
+      if(results.length > 0) {
+        // Preferred room available, return it
+        callback(null, results[0]);
+      } else {
+        // Preferred room not available, check for any available room
+        const fallbackQuery = `
+          SELECT r.rid, r.room_number
+          FROM rooms r
+          WHERE r.rid NOT IN (
+            SELECT b.rid 
+            FROM bookings b
+            WHERE NOT (b.enddate <= ? OR b.startdate >= ?)
+          )
+          LIMIT 1;`;
+
+        // Execute the fallback query
+        connection.query(fallbackQuery, [arrivalDate, departureDate], (error, fallbackResults) => {
+          if (error) {
+            callback(error, null);
+          } else {
+            if(fallbackResults.length > 0) {
+              // Found an available room, return it
+              callback(null, fallbackResults[0]);
+            } else {
+              // No rooms available at all
+              callback(null, null);
+            }
+          }
+        });
+      }
     }
   });
 }
+
 function getUserRole(uid, callback) {
   connection.query('SELECT role FROM users WHERE uid = ?', [uid], (error, results) => {
     if (error) {

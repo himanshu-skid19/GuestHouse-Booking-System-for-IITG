@@ -28,22 +28,129 @@ body, html {
   }
   
   .dashboard-brand {
-    font-size: 1.8rem; /* Slightly larger for emphasis */
+    font-size: 1.8rem;
     color: #dce3f2;
+    /* Add display inline-block if you want the brand to align with the items */
+    display: inline-block;
+    margin-right: 20px; /* Add some space between the brand and the menu items */
   }
+  
   
   .dashboard-items {
     list-style: none;
     padding-left: 0;
+    /* Remove margin and padding to align with brand if needed */
+    margin: 0;
+    padding: 0;
+    display: inline-block; /* This will keep the UL block but allow LI's to be inline */
   }
   
+  
   .dashboard-items li {
-    display: inline;
-    margin: 0 15px;
-    color: #dce3f2; /* Soft white for the menu items */
+    display: inline; /* This makes each LI display inline */
+    margin-right: 15px; /* Adjust space between menu items as needed */
+    color: #dce3f2;
     cursor: pointer;
   }
   
+  .dashboard-items li .dashboard-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+
+  /* Add these styles to your existing Dashboard.css file */
+
+/* Full-width table container */
+.dashboard-table-container {
+  max-width: 1200px; /* or 100% for full width */
+  margin: 0 auto;
+  padding: 0 20px; /* Add some padding on the sides */
+  overflow-x: auto; /* Enable horizontal scrolling if table is too wide */
+}
+
+/* Table heading style */
+.dashboard-table-header {
+  background-color: #007BFF; /* Adjust the color to match your theme */
+  color: white;
+  text-align: center;
+  padding: 16px 0;
+  margin-bottom: 20px; /* Space between header and table */
+}
+
+/* Table styles */
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white; /* Background color for the whole table */
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 12px 15px; /* Larger padding for cell spacing */
+  border: 1px solid #ddd;
+  text-align: left;
+  color:black;
+}
+
+.dashboard-table th {
+  background-color: #007BFF; /* Blue header to match theme */
+  color: white;
+}
+
+.dashboard-table tr:hover {
+  background-color: #f0f0f0; /* Light grey for hover */
+}
+
+/* Ensure text remains visible on hover */
+.dashboard-table tr:hover td {
+  color: #333;
+}
+
+/* Table button styles */
+.dashboard-button {
+  background-color: #28a745; /* Green background */
+  border: none;
+  padding: 8px 16px; /* Slightly smaller padding */
+  border-radius: 4px; /* Rounded corners for buttons */
+  color: white; /* White text */
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.dashboard-button:hover {
+  background-color: #218838; /* Darker green on hover */
+}
+
+/* Ensures the button text color doesn't change on hover */
+.dashboard-button:hover {
+  color: white;
+}
+
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 50%; /* Adjust as needed */
+  color: black;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+/* Add more custom styles as needed */
 
   .input-address {
     width: 100%;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Dashboard.css'; // Ensure you have a CSS file named Dashboard.css with appropriate styles
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const BookingPage = () => {
     const [bookingDetails, setBookingDetails] = useState({
@@ -13,9 +14,12 @@ const BookingPage = () => {
           relationshipWithUser: '',
         }],
         preferredOccupancy: '',
+        preferredGuestHouse: '',
+        preferredRoom: '',
         timeOfDeparture: '',
         timeOfArrival: '',
         purposeOfVisit: '',
+        remarks: '',
       });
 
       const handleChange = (e, index = null) => {
@@ -67,7 +71,7 @@ const BookingPage = () => {
             if (response.status === 200) {
                 console.log('Booking successful:', response.data);
                 alert('Booking application successful!');
-                // Consider redirecting the user or clearing the form here
+                navigate('/dashboard')
             } else {
                 console.error('Booking failed:', response.data.message);
                 alert(`Booking application failed: ${response.data.message}`);
@@ -85,7 +89,7 @@ const BookingPage = () => {
       <nav className="dashboard-navbar">
         <div className="dashboard-brand">Booking System</div>
         <ul className="dashboard-items">
-          <li>Home</li>
+          <li><Link to="/dashboard" className="dashboard-link">Home</Link></li>
           <li>About</li>
           <li>Contact</li>
         </ul>
@@ -162,7 +166,25 @@ const BookingPage = () => {
               placeholder="Preferred Occupancy"
               required
             />
-            
+
+            <select
+                name="preferredGuestHouse"
+                value={bookingDetails.preferredGuestHouse} // Ensure your state has this field
+                onChange={(e) => handleChange(e)}
+                >
+                <option value="">Select a GuestHouse (Optional)</option>
+                <option value="GuestHouse One">GuestHouse One</option>
+                <option value="New Guesthouse">New Guesthouse</option>
+                </select>
+
+            <input 
+                type="text"
+              name="preferredRoom"
+              value={bookingDetails.preferredRoom}
+              onChange={(e) => handleChange(e)}
+              placeholder="Preferred Room (Optional)"
+            />
+
             <input 
               type="datetime-local"
               name="timeOfDeparture"
@@ -184,6 +206,14 @@ const BookingPage = () => {
               onChange={(e) => handleChange(e)}
               placeholder="Purpose of Visit"
               required
+            />
+
+            <input 
+                type="text"
+              name="remarks"
+              value={bookingDetails.remarks}
+              onChange={(e) => handleChange(e)}
+              placeholder="Remarks (Optional)"
             />
             
             <button type="submit" className="dashboard-button">Submit Booking</button>

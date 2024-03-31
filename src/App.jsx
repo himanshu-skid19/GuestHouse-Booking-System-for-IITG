@@ -5,6 +5,7 @@ import LoginPage from './LoginPage'; // Import LoginPage component
 import RegistrationPage from './RegistrationPage'; 
 import Dashboard from './Dashboard'; // Import Dashboard component
 import BookingPage from './BookingPage';
+import BookingDetailsPage from './BookingDetails';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/booking" element={<BookingPage />} />
+      <Route path="/booking-details" element={<BookingDetailsPage />} />
     </Routes>
   </Router>
   );
