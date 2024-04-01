@@ -10,6 +10,7 @@ const AdminBooking = () => {
   const [remarks, setRemarks] = useState('');
   const [room, setRoom] = useState('');
   const [status, setStatus] = useState('');
+  const [price, setPrice] = useState('');
 
   useEffect(() => {
     fetchBookings();
@@ -36,28 +37,85 @@ const AdminBooking = () => {
     }
   };
 
-  const handleManageBooking = (booking) => {
+  const handlePriceCheck = async () => {
+    if (!room || !manageBooking) {
+      alert('Please select a room first.');
+      return;
+    }
+    try {
+      const response = await axios.get(`http://localhost:3001/calculate-booking-cost`, {
+        params: {
+          uid: manageBooking.uid, // You'll need to ensure that uid is included in the manageBooking state
+          roomno: room,
+          startDate: manageBooking.startdate,
+          endDate: manageBooking.enddate,
+        },
+        withCredentials: true
+      });
+      if (response.status === 200) {
+        setPrice(response.data.totalCost);
+      } else {
+        setPrice('Unable to fetch price');
+      }
+    } catch (error) {
+      console.error('Failed to fetch price:', error);
+      setPrice('Failed to fetch price');
+    }
+  };
+
+
+  const handleManageBooking = async (booking) => {
     setManageBooking(booking);
     setStatus(booking.status);
     setRemarks(booking.remarks || '');
-    setRoom(booking.room || '');
+
+    try {
+      const response = await axios.get(`http://localhost:3001/determine-available-room?arrivalDate=${booking.startdate}&departureDate=${booking.enddate}`, { withCredentials: true });
+      if (response.status == 200 && response.data.roomDetails) {
+        setRoom(response.data.roomDetails.roomno.toString());
+      } else {
+        setRoom("");
+        alert('No room available for the selected dates')
+      }
+    } catch (error) {
+      console.error('Error fetching room details:', error.response ? error.response.data : error.message);
+      setRoom('');
+    }
   };
 
   const handleUpdateBooking = async () => {
+    // Ensure that price is not empty or invalid
+    if (!price || isNaN(price)) {
+      alert('Please make sure to get a valid price for the room.');
+      return;
+    }
+  
     try {
-      const response = await axios.put(`http://localhost:3001/update-booking/${manageBooking.bid}`, {
-        status,
-        remarks,
-        room,
-      }, { withCredentials: true });
-
+      // Create the request body
+      const updatedBookingDetails = {
+        status: status,      // New status from the state
+        roomno: room,        // Room number from the state
+        remarks: remarks,    // Remarks from the state
+        finalPrice: parseFloat(price)  // Final price from the state, ensure it is a number
+      };
+  
+      // Send the PUT request to the server with updated booking details
+      const response = await axios.put(
+        `http://localhost:3001/update-booking/${manageBooking.bid}`,
+        updatedBookingDetails,
+        { withCredentials: true }
+      );
+  
       if (response.status === 200) {
         alert('Booking updated successfully');
-        setManageBooking(null);
-        fetchBookings();
+        setManageBooking(null); // Clear the manageBooking state to reset the form
+        fetchBookings();        // Fetch bookings again to reflect the changes
+      } else {
+        console.error('Failed to update booking: ', response.data);
       }
     } catch (error) {
-      console.error('Failed to update booking:', error);
+      console.error('Failed to update booking:', error.response ? error.response.data : error.message);
+      alert('Failed to update booking. Please try again.');
     }
   };
 
@@ -153,7 +211,12 @@ const AdminBooking = () => {
           </div>
           <div className="form-group">
             <label>Room:</label>
-            <input type="text" value={room} onChange={(e) => setRoom(e.target.value)} />
+            <input type="text" value={room} onChange={(e) => setRoom(e.target.value)} onBlur={handlePriceCheck} />
+          </div>
+          <div className="form-group">
+            <label>Price:</label>
+            <input type="text" value={price} readOnly />
+            <button onClick={handlePriceCheck}>Get Price</button>
           </div>
           <button onClick={handleUpdateBooking}>Update Booking</button>
           <button onClick={() => setManageBooking(null)}>Close</button>

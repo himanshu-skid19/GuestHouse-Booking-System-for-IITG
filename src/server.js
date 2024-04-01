@@ -219,7 +219,7 @@ app.get('/get-pending-bookings', (req, res) => {
     // Adjusted query to exclude 'accepted' and 'rejected' bookings
     const query = 'SELECT * FROM bookings WHERE status NOT IN (?, ?)';
 
-    connection.query(query, ['confirmed', 'rejected'], (error, results) => {
+    connection.query(query, ['accepted', 'rejected'], (error, results) => {
       if (error) {
         console.error('Error fetching pending booking details:', error);
         res.status(500).json({ status: 'error', message: 'Internal server error' });
@@ -412,65 +412,72 @@ app.post('/apply-booking', (req, res) => {
 });
 
 
+app.get('/determine-available-room', (req, res) => {
+  const { arrivalDate, departureDate, preferredGuesthouse, preferredRoom } = req.query;
+  
+  // Call your determineAvailableRoom function here
+  determineAvailableRoom(arrivalDate, departureDate, preferredGuesthouse, preferredRoom, (error, roomDetails) => {
+      if (error) {
+          console.error('Error finding available room:', error);
+          return res.status(500).json({ status: 'error', message: 'Internal server error' });
+      }
+
+      if (roomDetails) {
+          // If a room is found, send room details as response
+          res.json({ status: 'success', roomDetails });
+      } else {
+          // If no room is found, send a 404 response
+          res.status(404).json({ status: 'error', message: 'No available room found' });
+      }
+  });
+});
+
 
 function determineAvailableRoom(arrivalDate, departureDate, preferredGuesthouse, preferredRoom, callback) {
-  // Attempt to find the preferred room in the preferred guesthouse if specified
-  let query = `
-    SELECT r.rid, r.room_number
+  // Start with a base query that looks for all available rooms
+  let baseQuery = `
+    SELECT r.rid, r.roomno
     FROM rooms r
-    JOIN guesthouses g ON r.gid = g.gid
-    WHERE r.rid NOT IN (
-      SELECT b.rid 
+    WHERE NOT EXISTS (
+      SELECT 1
       FROM bookings b
-      WHERE NOT (b.enddate <= ? OR b.startdate >= ?)
-    )
-    ${preferredGuesthouse ? 'AND g.name = ?' : ''}
-    ${preferredRoom ? 'AND r.room_number = ?' : ''}
-    LIMIT 1;`;
+      WHERE b.rid = r.rid
+      AND (b.startdate < ? AND b.enddate > ?)
+    )`;
+
+  // If preferred guesthouse is specified, add it to the query
+  if (preferredGuesthouse) {
+    baseQuery += " AND r.gid IN (SELECT gid FROM guesthouses WHERE name = ?)";
+  }
+
+  // If preferred room is specified, add it to the query
+  if (preferredRoom) {
+    baseQuery += " AND r.roomno = ?";
+  }
+
+  baseQuery += " LIMIT 1;";
 
   // Parameters for the query, dynamically including preferred options if provided
-  let queryParams = [arrivalDate, departureDate];
+  let queryParams = [departureDate, arrivalDate]; // Note the order of dates for correct comparison
   if (preferredGuesthouse) queryParams.push(preferredGuesthouse);
   if (preferredRoom) queryParams.push(preferredRoom);
 
   // Execute the query with the constructed parameters
-  connection.query(query, queryParams, (error, results) => {
+  connection.query(baseQuery, queryParams, (error, results) => {
     if (error) {
       callback(error, null);
     } else {
       if(results.length > 0) {
-        // Preferred room available, return it
+        // Room available, return it
         callback(null, results[0]);
       } else {
-        // Preferred room not available, check for any available room
-        const fallbackQuery = `
-          SELECT r.rid, r.room_number
-          FROM rooms r
-          WHERE r.rid NOT IN (
-            SELECT b.rid 
-            FROM bookings b
-            WHERE NOT (b.enddate <= ? OR b.startdate >= ?)
-          )
-          LIMIT 1;`;
-
-        // Execute the fallback query
-        connection.query(fallbackQuery, [arrivalDate, departureDate], (error, fallbackResults) => {
-          if (error) {
-            callback(error, null);
-          } else {
-            if(fallbackResults.length > 0) {
-              // Found an available room, return it
-              callback(null, fallbackResults[0]);
-            } else {
-              // No rooms available at all
-              callback(null, null);
-            }
-          }
-        });
+        // No room available
+        callback(null, null);
       }
     }
   });
 }
+
 
 function getUserRole(uid, callback) {
   connection.query('SELECT role FROM users WHERE uid = ?', [uid], (error, results) => {
@@ -484,8 +491,8 @@ function getUserRole(uid, callback) {
   });
 }
 
-function getPricePerNight(rid, callback) {
-  connection.query('SELECT pricepernight FROM rooms WHERE rid = ?', [rid], (error, results) => {
+function getPricePerNight(roomno, callback) {
+  connection.query('SELECT pricepernight FROM rooms WHERE roomno= ?', [roomno], (error, results) => {
     if (error) {
       return callback(error, null);
     }
@@ -497,7 +504,7 @@ function getPricePerNight(rid, callback) {
 }
 
 
-function calculatePrice(uid, rid, startDate, endDate, callback) {
+function calculatePrice(uid, roomno, startDate, endDate, callback) {
   // Placeholder for the price calculation logic
   // Assume `getUserRole` and `getPricePerNight` are implemented elsewhere
   
@@ -506,7 +513,7 @@ function calculatePrice(uid, rid, startDate, endDate, callback) {
       return callback(err, null);
     }
     
-    getPricePerNight(rid, (err, pricePerNight) => {
+    getPricePerNight(roomno, (err, pricePerNight) => {
       if (err) {
         return callback(err, null);
       }
@@ -534,6 +541,68 @@ function calculatePrice(uid, rid, startDate, endDate, callback) {
 }
 
 
+app.get('/calculate-booking-cost', async (req, res) => {
+  // Extract the required parameters from the request query
+  const { uid, roomno, startDate, endDate } = req.query;
+
+  // Validate the incoming data
+  if (!uid || !roomno || !startDate || !endDate) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameters: uid, rid, startDate, endDate'
+    });
+  }
+
+  // Convert dates to appropriate format if necessary
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Use calculatePrice function to determine the price
+  calculatePrice(uid, roomno, start, end, (error, price) => {
+    if (error) {
+      console.error('Error calculating price:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Internal server error'
+      });
+    }
+
+    // If price calculation is successful, send the price in response
+    console.log('Total cost:', price);
+    res.json({
+      status: 'success',
+      totalCost: price
+    });
+  });
+});
+
+app.put('/update-booking/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  const { status, roomno, remarks, finalPrice } = req.body; // Include finalPrice in the destructured body
+
+  // Check if the user is logged in and has the permission to update a booking
+  if (!req.session.user) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: No session found' });
+  }
+
+  try {
+    // Find the room ID (rid) using the room number (roomno)
+    const roomDetails = await runQuery('SELECT rid FROM rooms WHERE roomno = ?', [roomno]);
+    if (roomDetails.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Room not found' });
+    }
+    const rid = roomDetails[0].rid;
+
+    // Update the booking record with the new details
+    const updateQuery = 'UPDATE bookings SET status = ?, rid = ?, remarks = ?, finalprice = ? WHERE bid = ?';
+    await runQuery(updateQuery, [status, rid, remarks, finalPrice, bookingId]);
+
+    res.json({ status: 'success', message: 'Booking updated successfully' });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+});
 
 
 app.post('/logout', (req, res) => {
