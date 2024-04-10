@@ -75,6 +75,10 @@ const AdminDashboard = () => {
       }
     
   };
+
+  const handlePricing = async () => {
+    navigate("/pricing-details");
+  }
   
 
   return (
@@ -82,9 +86,7 @@ const AdminDashboard = () => {
       <nav className="dashboard-navbar">
         <div className="dashboard-brand">Student Portal</div>
         <ul className="dashboard-items">
-          <li hred="/dashboard">Home</li>
-          <li>Profile</li>
-          <li>Courses</li>
+          <li href="/admin-dashboard">Home</li>
           <li onClick={handleLogout}>Logout</li>
         </ul>
       </nav>
@@ -100,16 +102,15 @@ const AdminDashboard = () => {
           </div>
           <div className="dashboard-actions">
             {/* Add buttons or links for the student to interact with */}
-            <button className="dashboard-button">Edit Profile</button>
             <button onClick={handleBookings} className="dashboard-button">View Bookings</button>
-            <button className="dashboard-button">Pricing Details</button>
+            <button onClick={handlePricing} className="dashboard-button">Pricing Details</button>
             
       
           </div>
         </section>
       </div>
       <footer className="dashboard-footer">
-        <p>University Name | All Rights Reserved</p>
+      <p>GHBS| Indian Institute of Technology, Guwahati</p>
       </footer>
     </>
   );

@@ -88,11 +88,13 @@ const Dashboard = () => {
       } else {
         // Handle any status other than 200 OK
         console.error('Error fetching bookings:', response.data.message);
+        
       }
     } catch (error) {
       if (error.response) {
         // The server responded with a status other than 2xx
         console.error('Server responded with an error:', error.response.status);
+        alert("No bookings found");
       } else if (error.request) {
         // The request was made but no response was received
         console.error('No response received:', error.request);
@@ -102,6 +104,11 @@ const Dashboard = () => {
       }
     }
   };
+
+  const handlePricing = async () => {
+    navigate("/pricing-details");
+  }
+  
   
 
   return (
@@ -110,8 +117,6 @@ const Dashboard = () => {
         <div className="dashboard-brand">Student Portal</div>
         <ul className="dashboard-items">
           <li hred="/dashboard">Home</li>
-          <li>Profile</li>
-          <li>Courses</li>
           <li onClick={handleLogout}>Logout</li>
         </ul>
       </nav>
@@ -128,16 +133,15 @@ const Dashboard = () => {
           <div className="dashboard-actions">
             {/* Add buttons or links for the student to interact with */}
             <button onClick={handleApply} className="dashboard-button">Apply for Accomodation</button>
-            <button className="dashboard-button">Edit Profile</button>
             <button onClick={handleBookings} className="dashboard-button">View Bookings</button>
-            <button className="dashboard-button">Pricing Details</button>
+            <button onClick={handlePricing} className="dashboard-button">Pricing Details</button>
             
       
           </div>
         </section>
       </div>
       <footer className="dashboard-footer">
-        <p>University Name | All Rights Reserved</p>
+        <p>GHBS| Indian Institute of Technology, Guwahati</p>
       </footer>
     </>
   );

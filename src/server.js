@@ -204,6 +204,7 @@ app.get('/get-booking-details', (req, res) => {
         res.status(200).json(results);
       } else {
         res.status(404).json({ status: 'error', message: 'Booking details not found' });
+        
       }
     });
   } else {

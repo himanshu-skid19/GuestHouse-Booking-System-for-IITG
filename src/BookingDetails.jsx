@@ -121,6 +121,10 @@ const BookingDetailsPage = () => {
                 <th>Purpose of Visit: </th>
                 <td>{currentBookingDetail.purposeofvisit}</td>
               </tr>
+              <tr>
+                <th>Remarks</th>
+                <td>{currentBookingDetail.remarks || 'None'}</td>
+              </tr>
             </tbody>
           </table>
   

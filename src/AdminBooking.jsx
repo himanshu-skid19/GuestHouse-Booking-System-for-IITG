@@ -115,7 +115,7 @@ const AdminBooking = () => {
       }
     } catch (error) {
       console.error('Failed to update booking:', error.response ? error.response.data : error.message);
-      alert('Failed to update booking. Please try again.');
+      alert('Failed to update booking. There is a conflict with the timings of the booking. Please try again.');
     }
   };
 
@@ -261,9 +261,8 @@ const AdminBooking = () => {
       <nav className="dashboard-navbar">
         <div className="dashboard-brand">Booking System</div>
         <ul className="dashboard-items">
-          <li><Link to="/dashboard">Home</Link></li>
+          <li><Link to="/admin-dashboard">Home</Link></li>
           <li>About</li>
-          <li>Contact</li>
         </ul>
       </nav>
       {renderTable(currentBookings)}

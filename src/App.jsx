@@ -8,6 +8,9 @@ import BookingPage from './BookingPage';
 import BookingDetailsPage from './BookingDetails';
 import AdminDashboard from './AdminDashboard';
 import AdminBooking from './AdminBooking';
+import PricingDetails from './PricingDetails';
+import About from './About';
+
 
 function App() {
   return (
@@ -21,6 +24,8 @@ function App() {
       <Route path="/booking-details" element={<BookingDetailsPage />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
       <Route path="/admin-booking" element={<AdminBooking/>} />
+      <Route path="/pricing-details" element={<PricingDetails />} />
+      <Route path="/about" element={<About />} />
     </Routes>
   </Router>
   );

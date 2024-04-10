@@ -59,7 +59,7 @@ const LoginPage = () => {
         <div className="nav-brand">GHBS</div>
         <ul className="dashboard-items">
           <li><Link to="/login" className="dashboard-link">Home</Link></li>
-          <li>About</li>
+          <li><Link to="/about" className="dashboard-link">About</Link></li>
           <li>Contact</li>
         </ul>
       </nav>

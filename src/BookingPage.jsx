@@ -122,7 +122,6 @@ const BookingPage = () => {
         <ul className="dashboard-items">
           <li><Link to="/dashboard" className="dashboard-link">Home</Link></li>
           <li>About</li>
-          <li>Contact</li>
         </ul>
       </nav>
       <div className="dashboard-container">
